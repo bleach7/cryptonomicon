@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@fontsource/roboto':
+    specifier: ^5.0.3
+    version: 5.0.3
   vue:
     specifier: ^3.2.47
     version: 3.2.47
@@ -396,6 +399,10 @@ packages:
     resolution: {integrity: sha512-s2UHCoiXfxMvmfzqoN+vrQ84ahUSYde9qNO1MdxmoEhyHWsfmwOpFlwYV+ePJEVc7gFnATGUi376WowX1N7tFg==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dev: true
+
+  /@fontsource/roboto@5.0.3:
+    resolution: {integrity: sha512-jbZDFwEFARDlo8TqG7th/xjhuq87GYfFpFb+uxuy+0Ng1bhRVgBRWlLj8+WIKhCTOr+h4QXbjpybLWFLUirOwQ==}
+    dev: false
 
   /@humanwhocodes/config-array@0.11.10:
     resolution: {integrity: sha512-KVVjQmNUepDVGXNuoRRdmmEjruj0KfiGSbS8LVc12LMsWDQzRXJ0qdhN8L8uUigKpfEHRhlaQFY0ib1tnUbNeQ==}

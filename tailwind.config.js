@@ -6,7 +6,11 @@ export default {
       center: true,
       padding: "2rem",
     },
-    extend: {},
+    extend: {
+      fontFamily: {
+        roboto: ["'Roboto', sans-serif", "system-ui"],
+      },
+    },
   },
   plugins: [],
 };
