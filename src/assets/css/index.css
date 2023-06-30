@@ -4,7 +4,7 @@
 
 @layer base {
   *::selection {
-    @apply bg-black text-white;
+    @apply bg-purple-800 text-white;
   }
 
   body::-webkit-scrollbar {
@@ -12,7 +12,7 @@
   }
 
   body::-webkit-scrollbar-thumb {
-    @apply rounded bg-black;
+    @apply rounded bg-purple-800;
   }
 
   body::-webkit-scrollbar-track {
