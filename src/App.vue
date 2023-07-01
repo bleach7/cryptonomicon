@@ -1,6 +1,11 @@
 <script lang="ts">
 import { defineComponent } from "vue";
-import type { ISeletedTicker, ITicker, ITickers } from "./interfaces";
+import type {
+  ISeletedTicker,
+  ITicker,
+  ITickers,
+  TIntervalID,
+} from "./interfaces";
 
 import VContainer from "./components/ui/VContainer.vue";
 import VDivider from "./components/ui/VDivider.vue";
@@ -9,7 +14,7 @@ import AddIcon from "./imgs/icons/AddIcon.vue";
 import CloseIcon from "./imgs/icons/CloseIcon.vue";
 import DeleteIcon from "./imgs/icons/DeleteIcon.vue";
 
-import { getCoinList } from "./api";
+import { getCoinList, getTickerPrice } from "./api";
 import { lockPageScroll } from "./utils";
 
 export default defineComponent({
@@ -76,6 +81,12 @@ export default defineComponent({
         price: 0,
       };
 
+      const intervalId = this.handleTrackingTicker(newTickerName);
+
+      if (intervalId) {
+        newTicker.intervalId = intervalId;
+      }
+
       this.tickers.push(newTicker);
 
       this.formAddTickerInputTickerName = "";
@@ -91,7 +102,7 @@ export default defineComponent({
             clearInterval(tickerToRemove.intervalId);
           }
           if (this.selectedTicker) {
-            if (this.selectedTicker.name === tickerToRemove.name) {
+            if (this.selectedTicker === tickerToRemove.name) {
               this.selectedTicker = null;
               this.selectedTickerGraph = [];
             }
@@ -102,19 +113,57 @@ export default defineComponent({
       });
     },
     handleSelectTicker(tickerToSelect: ITicker) {
-      this.selectedTicker = tickerToSelect;
       this.selectedTickerGraph = [];
+      this.selectedTicker = tickerToSelect.name;
     },
     handleCloseGraph() {
       this.selectedTicker = null;
       this.selectedTickerGraph = [];
     },
+    handleTrackingTicker(tickerName: string): TIntervalID {
+      const intervalId = setInterval(async () => {
+        try {
+          const price = await getTickerPrice(tickerName);
+
+          if (price) {
+            const formatPrice =
+              price > 1 ? price.toFixed(2) : price.toPrecision(2);
+
+            this.tickers = this.tickers.map((ticker) => {
+              if (ticker.name === tickerName.toLowerCase()) {
+                if (this.selectedTicker) {
+                  if (this.selectedTicker === ticker.name) {
+                    this.selectedTickerGraph.push(Number(price));
+                  }
+                }
+
+                return {
+                  ...ticker,
+                  price: Number(formatPrice),
+                };
+              } else {
+                return ticker;
+              }
+            });
+          }
+        } catch (error) {
+          console.log(error);
+        }
+      }, 5000);
+
+      return intervalId;
+    },
+    normalizeGraph(): number[] {
+      const maxValue = Math.max(...this.selectedTickerGraph);
+      const minValue = Math.min(...this.selectedTickerGraph);
+
+      return this.selectedTickerGraph.map(
+        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      );
+    },
   },
   computed: {
-    disabledSubmitBtnAddTicker() {
-      return this.formAddTickerInputTickerName.trim().length === 0;
-    },
-    hideCoinListSuggestions() {
+    isEmptyFormAddTickerName() {
       return this.formAddTickerInputTickerName.trim().length === 0;
     },
   },
@@ -141,7 +190,7 @@ export default defineComponent({
                   placeholder="Например DOGE"
                 />
               </div>
-              <template v-if="!hideCoinListSuggestions">
+              <template v-if="!isEmptyFormAddTickerName">
                 <ul
                   v-if="coinList.length !== 0"
                   class="flex flex-wrap items-center gap-2 rounded-md bg-white px-3 py-2 shadow-md"
@@ -168,9 +217,9 @@ export default defineComponent({
               </div>
             </fieldset>
             <button
-              :disabled="disabledSubmitBtnAddTicker"
+              :disabled="isEmptyFormAddTickerName"
               type="submit"
-              class="mt-2 inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:bg-gray-300"
+              class="mt-3 inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:bg-gray-300"
             >
               <AddIcon />
               <span>Добавить</span>
@@ -191,7 +240,8 @@ export default defineComponent({
               :key="tickerItem.name"
               :aria-label="`Открыть ${tickerItem.name} график`"
               :class="{
-                ['outline outline-purple-800']: tickerItem === selectedTicker,
+                ['outline outline-purple-800']:
+                  tickerItem.name === selectedTicker,
               }"
               @click="handleSelectTicker(tickerItem)"
               tabindex="0"
@@ -226,17 +276,19 @@ export default defineComponent({
         <div class="relative">
           <VDivider />
           <h3 class="my-8 text-lg font-bold uppercase leading-6 text-gray-900">
-            {{ selectedTicker.name }} - USD
+            {{ selectedTicker }} - USD
           </h3>
           <div class="flex h-64 items-end border-b border-l border-gray-600">
-            <div class="h-24 w-10 border bg-purple-800"></div>
-            <div class="h-32 w-10 border bg-purple-800"></div>
-            <div class="h-48 w-10 border bg-purple-800"></div>
-            <div class="h-16 w-10 border bg-purple-800"></div>
+            <div
+              v-for="(bar, idx) in normalizeGraph()"
+              :key="idx"
+              :style="{ height: `${bar}%` }"
+              class="w-10 border bg-purple-800"
+            ></div>
           </div>
           <button
             @click="handleCloseGraph"
-            :aria-label="`Закрыть ${selectedTicker.name} график`"
+            :aria-label="`Закрыть ${selectedTicker} график`"
             type="button"
             class="absolute right-0 top-8 text-gray-700"
           >

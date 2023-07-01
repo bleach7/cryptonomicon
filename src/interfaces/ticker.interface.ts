@@ -3,7 +3,9 @@ export type ITickers = ITicker[];
 export interface ITicker {
   name: string;
   price: number;
-  intervalId?: ReturnType<typeof setInterval>;
+  intervalId?: TIntervalID;
 }
 
-export type ISeletedTicker = null | ITicker;
+export type ISeletedTicker = null | string;
+
+export type TIntervalID = ReturnType<typeof setInterval>;
