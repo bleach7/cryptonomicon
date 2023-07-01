@@ -1,13 +1,15 @@
 <script lang="ts">
 import { defineComponent } from "vue";
-import { ISeletedTicker, ITickers } from "./interfaces";
+import type { ISeletedTicker, ITicker, ITickers } from "./interfaces";
 
 import VContainer from "./components/ui/VContainer.vue";
+import VDivider from "./components/ui/VDivider.vue";
 import VPagePreloader from "./components/ui/VPagePreloader.vue";
 import AddIcon from "./imgs/icons/AddIcon.vue";
 import CloseIcon from "./imgs/icons/CloseIcon.vue";
 import DeleteIcon from "./imgs/icons/DeleteIcon.vue";
 
+import { getCoinList } from "./api";
 import { lockPageScroll } from "./utils";
 
 export default defineComponent({
@@ -15,20 +17,27 @@ export default defineComponent({
   data() {
     return {
       formAddTickerInputTickerName: "",
-      formAddTickerErrors: [] as string[],
+      formAddTickerIsError: false,
       tickers: [] as ITickers,
       selectedTicker: null as ISeletedTicker,
       isCoinListLoading: false,
       coinList: [] as string[],
+      selectedTickerGraph: [] as number[],
     };
   },
-  mounted() {
-    lockPageScroll(true);
+  async mounted() {
+    try {
+      lockPageScroll(true);
+      const coinListData = await getCoinList();
 
-    setTimeout(() => {
-      this.isCoinListLoading = true;
-      lockPageScroll(false);
-    }, 3000);
+      if (Array.isArray(coinListData)) {
+        this.coinList = coinListData;
+        this.isCoinListLoading = true;
+        lockPageScroll(false);
+      }
+    } catch (error) {
+      console.log(error);
+    }
   },
   components: {
     AddIcon,
@@ -36,6 +45,78 @@ export default defineComponent({
     CloseIcon,
     VContainer,
     VPagePreloader,
+    VDivider,
+  },
+  methods: {
+    handleAddTicker() {
+      const newTickerName = this.formAddTickerInputTickerName
+        .toLowerCase()
+        .trim();
+
+      const existingTicker = this.tickers.find(
+        (ticker) => ticker.name === newTickerName
+      );
+
+      if (existingTicker) {
+        this.formAddTickerIsError = true;
+
+        this.$nextTick(() => {
+          const inputEl = document.getElementById("wallet");
+
+          if (inputEl) {
+            inputEl.focus();
+          }
+        });
+
+        return;
+      }
+
+      const newTicker: ITicker = {
+        name: newTickerName,
+        price: 0,
+      };
+
+      this.tickers.push(newTicker);
+
+      this.formAddTickerInputTickerName = "";
+
+      if (this.formAddTickerIsError) {
+        this.formAddTickerIsError = false;
+      }
+    },
+    handleDeleteTicker(tickerToRemove: ITicker) {
+      this.tickers = this.tickers.filter((ticker) => {
+        if (ticker.name === tickerToRemove.name) {
+          if (tickerToRemove.intervalId) {
+            clearInterval(tickerToRemove.intervalId);
+          }
+          if (this.selectedTicker) {
+            if (this.selectedTicker.name === tickerToRemove.name) {
+              this.selectedTicker = null;
+              this.selectedTickerGraph = [];
+            }
+          }
+        } else {
+          return ticker;
+        }
+      });
+    },
+    handleSelectTicker(tickerToSelect: ITicker) {
+      this.selectedTicker = tickerToSelect;
+      this.selectedTickerGraph = [];
+    },
+    handleCloseGraph() {
+      this.selectedTicker = null;
+      this.selectedTickerGraph = [];
+    },
+  },
+  computed: {
+    disabledSubmitBtnAddTicker() {
+      return this.formAddTickerInputTickerName.trim().length === 0;
+    },
+    hideCoinListSuggestions() {
+      return this.formAddTickerInputTickerName.trim().length === 0;
+    },
   },
 });
 </script>
@@ -46,7 +127,7 @@ export default defineComponent({
     <section>
       <VContainer>
         <div>
-          <form>
+          <form @submit.prevent="handleAddTicker">
             <fieldset class="w-full max-w-none sm:w-auto sm:max-w-xs">
               <legend class="block text-sm text-gray-700">
                 <label for="wallet">Тикер</label>
@@ -55,39 +136,41 @@ export default defineComponent({
                 <input
                   v-model="formAddTickerInputTickerName"
                   type="text"
-                  name="wallet"
                   id="wallet"
                   class="block w-full rounded-md border-gray-300 pr-10 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-gray-500 sm:text-sm"
                   placeholder="Например DOGE"
                 />
               </div>
-              <ul
-                v-if="coinList.length !== 0"
-                class="flex flex-wrap items-center gap-2 rounded-md bg-white px-3 py-2 shadow-md"
-              >
-                <li v-for="coin in coinList" :key="coin" class="flex">
-                  <button
-                    type="button"
-                    class="inline-block min-h-[18px] cursor-pointer rounded-md bg-gray-300 px-2 text-xs font-bold uppercase text-gray-800"
+              <template v-if="!hideCoinListSuggestions">
+                <ul
+                  v-if="coinList.length !== 0"
+                  class="flex flex-wrap items-center gap-2 rounded-md bg-white px-3 py-2 shadow-md"
+                >
+                  <li
+                    v-for="coin in coinList.slice(0, 4)"
+                    :key="coin"
+                    class="flex"
                   >
-                    {{ coin }}
-                  </button>
-                </li>
-              </ul>
+                    <button
+                      type="button"
+                      class="inline-block min-h-[18px] cursor-pointer rounded-md bg-gray-300 px-2 text-xs font-bold uppercase text-gray-800"
+                    >
+                      {{ coin }}
+                    </button>
+                  </li>
+                </ul>
+              </template>
               <div
-                v-if="formAddTickerErrors.length !== 0"
+                v-if="formAddTickerIsError === true"
                 class="mt-1 flex flex-col gap-y-1 text-sm text-red-600"
               >
-                <span
-                  v-for="error in formAddTickerErrors"
-                  :key="error.trim()"
-                  >{{ error }}</span
-                >
+                <span>Такой тикер уже добавлен</span>
               </div>
             </fieldset>
             <button
+              :disabled="disabledSubmitBtnAddTicker"
               type="submit"
-              class="mt-2 inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              class="mt-2 inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:bg-gray-300"
             >
               <AddIcon />
               <span>Добавить</span>
@@ -99,16 +182,20 @@ export default defineComponent({
     <section v-if="tickers.length !== 0">
       <VContainer>
         <div>
-          <hr class="my-8 w-full border-t border-gray-600" />
+          <VDivider />
           <div
             class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3"
           >
             <article
-              v-for="ticker in tickers"
-              :key="ticker.name"
-              :aria-label="`Открыть ${ticker.name} график`"
+              v-for="tickerItem in tickers"
+              :key="tickerItem.name"
+              :aria-label="`Открыть ${tickerItem.name} график`"
+              :class="{
+                ['outline outline-purple-800']: tickerItem === selectedTicker,
+              }"
+              @click="handleSelectTicker(tickerItem)"
               tabindex="0"
-              class="cursor-pointer drop-shadow transition-all duration-150 ease-in-out active:drop-shadow-md md:hover:drop-shadow-md"
+              class="cursor-pointer drop-shadow transition-shadow duration-150 ease-in-out active:drop-shadow-md md:hover:drop-shadow-md"
             >
               <div
                 class="flex flex-col items-center rounded-t-lg border-b border-b-gray-200 bg-white px-4 py-5 text-center sm:p-6"
@@ -116,13 +203,14 @@ export default defineComponent({
                 <span
                   class="truncate text-sm font-bold uppercase text-gray-500"
                 >
-                  {{ ticker.name }} - USD
+                  {{ tickerItem.name }} - USD
                 </span>
                 <span class="mt-1 text-3xl font-bold text-gray-900">{{
-                  ticker.price === 0 ? "-" : ticker.price
+                  tickerItem.price === 0 ? "-" : tickerItem.price
                 }}</span>
               </div>
               <button
+                @click.stop="handleDeleteTicker(tickerItem)"
                 class="text-md flex w-full items-center justify-center gap-x-1 rounded-b-lg bg-gray-100 px-4 py-4 font-bold text-gray-500 transition-all active:bg-gray-200 active:text-gray-600 sm:px-6 md:hover:bg-gray-200 md:hover:text-gray-600"
               >
                 <DeleteIcon />
@@ -136,8 +224,8 @@ export default defineComponent({
     <section v-if="selectedTicker !== null">
       <VContainer>
         <div class="relative">
-          <hr class="my-8 w-full border-t border-gray-600" />
-          <h3 class="my-8 text-lg font-bold leading-6 text-gray-900">
+          <VDivider />
+          <h3 class="my-8 text-lg font-bold uppercase leading-6 text-gray-900">
             {{ selectedTicker.name }} - USD
           </h3>
           <div class="flex h-64 items-end border-b border-l border-gray-600">
@@ -147,6 +235,7 @@ export default defineComponent({
             <div class="h-16 w-10 border bg-purple-800"></div>
           </div>
           <button
+            @click="handleCloseGraph"
             :aria-label="`Закрыть ${selectedTicker.name} график`"
             type="button"
             class="absolute right-0 top-8 text-gray-700"
