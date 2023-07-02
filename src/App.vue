@@ -166,6 +166,17 @@ export default defineComponent({
     isEmptyFormAddTickerName() {
       return this.formAddTickerInputTickerName.trim().length === 0;
     },
+    filteredCoinList() {
+      if (this.formAddTickerInputTickerName === "") {
+        return this.coinList;
+      } else {
+        return this.coinList.filter((coin) =>
+          coin
+            .toLowerCase()
+            .includes(this.formAddTickerInputTickerName.toLowerCase())
+        );
+      }
+    },
   },
 });
 </script>
@@ -196,7 +207,7 @@ export default defineComponent({
                   class="flex flex-wrap items-center gap-2 rounded-md bg-white px-3 py-2 shadow-md"
                 >
                   <li
-                    v-for="coin in coinList.slice(0, 4)"
+                    v-for="coin in filteredCoinList.slice(0, 4)"
                     :key="coin"
                     class="flex"
                   >
