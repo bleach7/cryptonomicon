@@ -95,6 +95,46 @@ export default defineComponent({
         this.formAddTickerIsError = false;
       }
     },
+    handleAddTickerUseCoinHint(coinName: string) {
+      const newTickerName = coinName.toLowerCase().trim();
+
+      const existingTicker = this.tickers.find(
+        (ticker) => ticker.name === newTickerName
+      );
+
+      if (existingTicker) {
+        this.formAddTickerIsError = true;
+
+        this.$nextTick(() => {
+          const inputEl = document.getElementById("wallet");
+
+          if (inputEl) {
+            inputEl.focus();
+          }
+        });
+
+        return;
+      }
+
+      const newTicker: ITicker = {
+        name: newTickerName,
+        price: 0,
+      };
+
+      const intervalId = this.handleTrackingTicker(newTickerName);
+
+      if (intervalId) {
+        newTicker.intervalId = intervalId;
+      }
+
+      this.tickers.push(newTicker);
+
+      this.formAddTickerInputTickerName = "";
+
+      if (this.formAddTickerIsError) {
+        this.formAddTickerIsError = false;
+      }
+    },
     handleDeleteTicker(tickerToRemove: ITicker) {
       this.tickers = this.tickers.filter((ticker) => {
         if (ticker.name === tickerToRemove.name) {
@@ -212,8 +252,9 @@ export default defineComponent({
                     class="flex"
                   >
                     <button
+                      @click="handleAddTickerUseCoinHint(coin)"
                       type="button"
-                      class="inline-block min-h-[18px] cursor-pointer rounded-md bg-gray-300 px-2 text-xs font-bold uppercase text-gray-800"
+                      class="inline-block min-h-[18px] cursor-pointer rounded-md bg-gray-300 px-2 text-xs font-bold uppercase text-gray-800 transition-colors duration-150 ease-in-out active:bg-gray-400 md:hover:bg-gray-400"
                     >
                       {{ coin }}
                     </button>
