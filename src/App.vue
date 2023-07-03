@@ -15,7 +15,12 @@ import CloseIcon from "./imgs/icons/CloseIcon.vue";
 import DeleteIcon from "./imgs/icons/DeleteIcon.vue";
 
 import { getCoinList, getTickerPrice } from "./api";
-import { lockPageScroll } from "./utils";
+import {
+  deleteTickerFromLocalStorage,
+  getTickersFromLocalStorage,
+  lockPageScroll,
+  setTickersToLocalStorage,
+} from "./utils";
 
 export default defineComponent({
   name: "App",
@@ -88,6 +93,7 @@ export default defineComponent({
       }
 
       this.tickers.push(newTicker);
+      setTickersToLocalStorage(this.tickers);
 
       this.formAddTickerInputTickerName = "";
 
@@ -129,6 +135,8 @@ export default defineComponent({
 
       this.tickers.push(newTicker);
 
+      setTickersToLocalStorage(this.tickers);
+
       this.formAddTickerInputTickerName = "";
 
       if (this.formAddTickerIsError) {
@@ -138,6 +146,7 @@ export default defineComponent({
     handleDeleteTicker(tickerToRemove: ITicker) {
       this.tickers = this.tickers.filter((ticker) => {
         if (ticker.name === tickerToRemove.name) {
+          deleteTickerFromLocalStorage(ticker);
           if (tickerToRemove.intervalId) {
             clearInterval(tickerToRemove.intervalId);
           }
@@ -217,6 +226,20 @@ export default defineComponent({
         );
       }
     },
+  },
+  created() {
+    const tickersFromLocalStorage = getTickersFromLocalStorage();
+
+    if (tickersFromLocalStorage) {
+      this.tickers = tickersFromLocalStorage;
+
+      this.tickers.forEach((ticker) => {
+        const intervalId = this.handleTrackingTicker(ticker.name);
+        if (intervalId) {
+          ticker.intervalId = intervalId;
+        }
+      });
+    }
   },
 });
 </script>
