@@ -7,12 +7,12 @@ import type {
   TIntervalID,
 } from "./interfaces";
 
+import AddIcon from "./assets/imgs/icons/AddIcon.vue";
+import CloseIcon from "./assets/imgs/icons/CloseIcon.vue";
+import DeleteIcon from "./assets/imgs/icons/DeleteIcon.vue";
 import VContainer from "./components/ui/VContainer.vue";
 import VDivider from "./components/ui/VDivider.vue";
 import VPagePreloader from "./components/ui/VPagePreloader.vue";
-import AddIcon from "./imgs/icons/AddIcon.vue";
-import CloseIcon from "./imgs/icons/CloseIcon.vue";
-import DeleteIcon from "./imgs/icons/DeleteIcon.vue";
 
 import { getCoinList, getTickerPrice } from "./api";
 import {
@@ -33,6 +33,8 @@ export default defineComponent({
       isCoinListLoading: false,
       coinList: [] as string[],
       selectedTickerGraph: [] as number[],
+      currentPage: 1,
+      searchQuery: "",
     };
   },
   async mounted() {
@@ -100,6 +102,15 @@ export default defineComponent({
       if (this.formAddTickerIsError) {
         this.formAddTickerIsError = false;
       }
+    },
+    filteredTickers() {
+      if (this.searchQuery === "") {
+        return this.tickers;
+      }
+
+      return this.tickers.filter((ticker) =>
+        ticker.name.includes(this.searchQuery.toLowerCase())
+      );
     },
     handleAddTickerUseCoinHint(coinName: string) {
       const newTickerName = coinName.toLowerCase().trim();
@@ -303,6 +314,37 @@ export default defineComponent({
         </div>
       </VContainer>
     </section>
+    <section v-if="tickers.length !== 0" class="mt-[20px]">
+      <VContainer>
+        <div>
+          <div class="max-w-xs">
+            <label for="search">
+              <input
+                v-model="searchQuery"
+                id="search"
+                type="text"
+                placeholder="Поиск..."
+                class="w-full"
+              />
+            </label>
+          </div>
+          <section class="mt-[10px] flex items-center gap-x-[20px]">
+            <button
+              type="button"
+              class="inline-block transition-colors duration-150 ease-in-out focus:outline-none focus-visible:outline-purple-800 active:text-purple-800 md:hover:text-purple-800"
+            >
+              <span>Назад</span>
+            </button>
+            <button
+              type="button"
+              class="inline-block transition-colors duration-150 ease-in-out focus:outline-none focus-visible:outline-purple-800 active:text-purple-800 md:hover:text-purple-800"
+            >
+              <span>Вперёд</span>
+            </button>
+          </section>
+        </div>
+      </VContainer>
+    </section>
     <section v-if="tickers.length !== 0">
       <VContainer>
         <div>
@@ -311,7 +353,7 @@ export default defineComponent({
             class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3"
           >
             <article
-              v-for="tickerItem in tickers"
+              v-for="tickerItem in filteredTickers()"
               :key="tickerItem.name"
               :aria-label="`Открыть ${tickerItem.name} график`"
               :class="{

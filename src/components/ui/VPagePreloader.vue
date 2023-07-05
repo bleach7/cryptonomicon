@@ -1,6 +1,6 @@
 <script lang="ts">
 import { defineComponent } from "vue";
-import LoaderIcon from "../../imgs/icons/LoaderIcon.vue";
+import LoaderIcon from "../../assets/imgs/icons/LoaderIcon.vue";
 
 export default defineComponent({
   name: "VPagePreloader",
