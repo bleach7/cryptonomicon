@@ -98,6 +98,7 @@ export default defineComponent({
       setTickersToLocalStorage(this.tickers);
 
       this.formAddTickerInputTickerName = "";
+      this.searchQuery = "";
 
       if (this.formAddTickerIsError) {
         this.formAddTickerIsError = false;
@@ -149,6 +150,7 @@ export default defineComponent({
       setTickersToLocalStorage(this.tickers);
 
       this.formAddTickerInputTickerName = "";
+      this.searchQuery = "";
 
       if (this.formAddTickerIsError) {
         this.formAddTickerIsError = false;
