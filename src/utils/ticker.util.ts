@@ -1,4 +1,5 @@
-import { ITicker, ITickers } from "@/interfaces";
+import { ITicker, ITickers } from "interfaces";
+
 const key = "TICKER_LIST";
 
 export const setTickersToLocalStorage = (tickers: ITickers) => {
