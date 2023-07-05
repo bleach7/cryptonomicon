@@ -35,6 +35,7 @@ export default defineComponent({
       selectedTickerGraph: [] as number[],
       currentPage: 1,
       searchQuery: "",
+      pageSize: 6,
     };
   },
   async mounted() {
@@ -110,7 +111,7 @@ export default defineComponent({
       }
 
       return this.tickers.filter((ticker) =>
-        ticker.name.includes(this.searchQuery.toLowerCase())
+        ticker.name.includes(this.searchQuery.toLowerCase().trim())
       );
     },
     handleAddTickerUseCoinHint(coinName: string) {
@@ -223,6 +224,24 @@ export default defineComponent({
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
     },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+    resetPage() {
+      this.currentPage = 1;
+    },
+  },
+  watch: {
+    resetPage() {
+      this.currentPage = 1;
+    },
   },
   computed: {
     isEmptyFormAddTickerName() {
@@ -238,6 +257,15 @@ export default defineComponent({
             .includes(this.formAddTickerInputTickerName.toLowerCase())
         );
       }
+    },
+    totalPages(): number {
+      return Math.ceil(this.filteredTickers().length / this.pageSize);
+    },
+    visibleTickers(): ITickers {
+      const startIndex = (this.currentPage - 1) * this.pageSize;
+      const endIndex = startIndex + this.pageSize;
+
+      return this.filteredTickers().slice(startIndex, endIndex);
     },
   },
   created() {
@@ -320,28 +348,35 @@ export default defineComponent({
       <VContainer>
         <div>
           <div class="max-w-xs">
-            <label for="search">
+            <div class="relative mt-1 rounded-md shadow-md">
               <input
                 v-model="searchQuery"
-                id="search"
+                @input="resetPage"
                 type="text"
                 placeholder="Поиск..."
-                class="w-full"
+                class="block w-full rounded-md border-gray-300 pr-10 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-gray-500 sm:text-sm"
               />
-            </label>
+            </div>
           </div>
-          <section class="mt-[10px] flex items-center gap-x-[20px]">
+          <section
+            v-if="tickers.length >= 7"
+            class="mt-3 flex items-center gap-x-[10px]"
+          >
             <button
+              @click="prevPage"
+              :disabled="currentPage === 1"
               type="button"
-              class="inline-block transition-colors duration-150 ease-in-out focus:outline-none focus-visible:outline-purple-800 active:text-purple-800 md:hover:text-purple-800"
+              class="inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:bg-gray-300"
             >
-              <span>Назад</span>
+              Назад
             </button>
             <button
+              @click="nextPage"
+              :disabled="currentPage === totalPages"
               type="button"
-              class="inline-block transition-colors duration-150 ease-in-out focus:outline-none focus-visible:outline-purple-800 active:text-purple-800 md:hover:text-purple-800"
+              class="inline-flex items-center rounded-full border border-transparent bg-gray-600 px-4 py-2 text-sm font-bold leading-4 text-white shadow-sm transition-colors duration-300 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:bg-gray-300"
             >
-              <span>Вперёд</span>
+              Вперёд
             </button>
           </section>
         </div>
@@ -355,7 +390,7 @@ export default defineComponent({
             class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3"
           >
             <article
-              v-for="tickerItem in filteredTickers()"
+              v-for="tickerItem in visibleTickers"
               :key="tickerItem.name"
               :aria-label="`Открыть ${tickerItem.name} график`"
               :class="{
