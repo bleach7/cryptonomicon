@@ -212,7 +212,7 @@ export default defineComponent({
         } catch (error) {
           console.log(error);
         }
-      }, 5000);
+      }, 10000);
 
       return intervalId;
     },
@@ -234,11 +234,6 @@ export default defineComponent({
         this.currentPage++;
       }
     },
-    resetPage() {
-      this.currentPage = 1;
-    },
-  },
-  watch: {
     resetPage() {
       this.currentPage = 1;
     },
