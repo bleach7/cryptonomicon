@@ -52,6 +52,11 @@ export default defineComponent({
       console.log(error);
     }
   },
+  watch: {
+    searchQuery() {
+      this.currentPage = 1;
+    },
+  },
   components: {
     AddIcon,
     DeleteIcon,
@@ -234,9 +239,6 @@ export default defineComponent({
         this.currentPage++;
       }
     },
-    resetPage() {
-      this.currentPage = 1;
-    },
   },
   computed: {
     isEmptyFormAddTickerName() {
@@ -346,7 +348,6 @@ export default defineComponent({
             <div class="relative mt-1 rounded-md shadow-md">
               <input
                 v-model="searchQuery"
-                @input="resetPage"
                 type="text"
                 placeholder="Поиск..."
                 class="block w-full rounded-md border-gray-300 pr-10 text-gray-900 focus:border-gray-500 focus:outline-none focus:ring-gray-500 sm:text-sm"
