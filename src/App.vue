@@ -52,11 +52,6 @@ export default defineComponent({
       console.log(error);
     }
   },
-  watch: {
-    searchQuery() {
-      this.currentPage = 1;
-    },
-  },
   components: {
     AddIcon,
     DeleteIcon,
@@ -94,11 +89,11 @@ export default defineComponent({
         price: 0,
       };
 
-      const intervalId = this.handleTrackingTicker(newTickerName);
-
-      if (intervalId) {
-        newTicker.intervalId = intervalId;
-      }
+      //       const intervalId = this.handleTrackingTicker(newTickerName);
+      //
+      //       if (intervalId) {
+      //         newTicker.intervalId = intervalId;
+      //       }
 
       this.tickers.push(newTicker);
       setTickersToLocalStorage(this.tickers);
@@ -145,11 +140,11 @@ export default defineComponent({
         price: 0,
       };
 
-      const intervalId = this.handleTrackingTicker(newTickerName);
-
-      if (intervalId) {
-        newTicker.intervalId = intervalId;
-      }
+      //       const intervalId = this.handleTrackingTicker(newTickerName);
+      //
+      //       if (intervalId) {
+      //         newTicker.intervalId = intervalId;
+      //       }
 
       this.tickers.push(newTicker);
 
@@ -265,18 +260,48 @@ export default defineComponent({
       return this.filteredTickers().slice(startIndex, endIndex);
     },
   },
+  watch: {
+    searchQuery() {
+      this.currentPage = 1;
+
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?search=${this.searchQuery}&page=${this.currentPage}`
+      );
+    },
+    currentPage() {
+      window.history.pushState(
+        null,
+        document.title,
+        `${window.location.pathname}?search=${this.searchQuery}&page=${this.currentPage}`
+      );
+    },
+  },
   created() {
+    const windowData = Object.fromEntries(
+      new URL(window.location.href).searchParams.entries()
+    );
+
+    if (windowData.search) {
+      this.searchQuery = windowData.search;
+    }
+
+    if (windowData.page) {
+      this.currentPage = Number(windowData.page);
+    }
+
     const tickersFromLocalStorage = getTickersFromLocalStorage();
 
     if (tickersFromLocalStorage) {
-      this.tickers = tickersFromLocalStorage;
-
-      this.tickers.forEach((ticker) => {
-        const intervalId = this.handleTrackingTicker(ticker.name);
-        if (intervalId) {
-          ticker.intervalId = intervalId;
-        }
-      });
+      //       this.tickers = tickersFromLocalStorage;
+      //
+      //       this.tickers.forEach((ticker) => {
+      //         const intervalId = this.handleTrackingTicker(ticker.name);
+      //         if (intervalId) {
+      //           ticker.intervalId = intervalId;
+      //         }
+      //       });
     }
   },
 });
@@ -341,7 +366,7 @@ export default defineComponent({
         </div>
       </VContainer>
     </section>
-    <section v-if="tickers.length !== 0" class="mt-[20px]">
+    <section class="mt-[20px]">
       <VContainer>
         <div>
           <div class="max-w-xs">
