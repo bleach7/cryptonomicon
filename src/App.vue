@@ -94,11 +94,11 @@ export default defineComponent({
         price: 0,
       };
 
-      //       const intervalId = this.handleTrackingTicker(newTickerName);
-      //
-      //       if (intervalId) {
-      //         newTicker.intervalId = intervalId;
-      //       }
+      const intervalId = this.handleTrackingTicker(newTickerName);
+
+      if (intervalId) {
+        newTicker.intervalId = intervalId;
+      }
 
       this.tickers = [...this.tickers, newTicker];
 
@@ -279,12 +279,12 @@ export default defineComponent({
     if (tickersFromLocalStorage) {
       this.tickers = tickersFromLocalStorage;
 
-      // this.tickers.forEach((ticker) => {
-      //   const intervalId = this.handleTrackingTicker(ticker.name);
-      //   if (intervalId) {
-      //     ticker.intervalId = intervalId;
-      //   }
-      // });
+      this.tickers.forEach((ticker) => {
+        const intervalId = this.handleTrackingTicker(ticker.name);
+        if (intervalId) {
+          ticker.intervalId = intervalId;
+        }
+      });
     }
   },
 });
