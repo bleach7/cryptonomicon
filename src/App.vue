@@ -19,6 +19,7 @@ import {
   deleteTickerFromLocalStorage,
   getTickersFromLocalStorage,
   lockPageScroll,
+  saveStateToWindowLocation,
   setTickersToLocalStorage,
 } from "./utils";
 
@@ -61,10 +62,14 @@ export default defineComponent({
     VDivider,
   },
   methods: {
-    handleAddTicker() {
-      const newTickerName = this.formAddTickerInputTickerName
-        .toLowerCase()
-        .trim();
+    handleAddTicker(coinName?: string) {
+      let newTickerName: string | null = null;
+
+      if (coinName) {
+        newTickerName = coinName.toLowerCase().trim();
+      } else {
+        newTickerName = this.formAddTickerInputTickerName.toLowerCase().trim();
+      }
 
       const existingTicker = this.tickers.find(
         (ticker) => ticker.name === newTickerName
@@ -95,60 +100,7 @@ export default defineComponent({
       //         newTicker.intervalId = intervalId;
       //       }
 
-      this.tickers.push(newTicker);
-      setTickersToLocalStorage(this.tickers);
-
-      this.formAddTickerInputTickerName = "";
-      this.searchQuery = "";
-
-      if (this.formAddTickerIsError) {
-        this.formAddTickerIsError = false;
-      }
-    },
-    filteredTickers() {
-      if (this.searchQuery === "") {
-        return this.tickers;
-      }
-
-      return this.tickers.filter((ticker) =>
-        ticker.name.includes(this.searchQuery.toLowerCase().trim())
-      );
-    },
-    handleAddTickerUseCoinHint(coinName: string) {
-      const newTickerName = coinName.toLowerCase().trim();
-
-      const existingTicker = this.tickers.find(
-        (ticker) => ticker.name === newTickerName
-      );
-
-      if (existingTicker) {
-        this.formAddTickerIsError = true;
-
-        this.$nextTick(() => {
-          const inputEl = document.getElementById("wallet");
-
-          if (inputEl) {
-            inputEl.focus();
-          }
-        });
-
-        return;
-      }
-
-      const newTicker: ITicker = {
-        name: newTickerName,
-        price: 0,
-      };
-
-      //       const intervalId = this.handleTrackingTicker(newTickerName);
-      //
-      //       if (intervalId) {
-      //         newTicker.intervalId = intervalId;
-      //       }
-
-      this.tickers.push(newTicker);
-
-      setTickersToLocalStorage(this.tickers);
+      this.tickers = [...this.tickers, newTicker];
 
       this.formAddTickerInputTickerName = "";
       this.searchQuery = "";
@@ -176,12 +128,11 @@ export default defineComponent({
       });
     },
     handleSelectTicker(tickerToSelect: ITicker) {
-      this.selectedTickerGraph = [];
       this.selectedTicker = tickerToSelect.name;
     },
     handleCloseGraph() {
-      this.selectedTicker = null;
       this.selectedTickerGraph = [];
+      this.selectedTicker = null;
     },
     handleTrackingTicker(tickerName: string): TIntervalID {
       const intervalId = setInterval(async () => {
@@ -216,14 +167,6 @@ export default defineComponent({
 
       return intervalId;
     },
-    normalizeGraph(): number[] {
-      const maxValue = Math.max(...this.selectedTickerGraph);
-      const minValue = Math.min(...this.selectedTickerGraph);
-
-      return this.selectedTickerGraph.map(
-        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
-      );
-    },
     prevPage() {
       if (this.currentPage > 1) {
         this.currentPage--;
@@ -250,32 +193,72 @@ export default defineComponent({
         );
       }
     },
-    totalPages(): number {
-      return Math.ceil(this.filteredTickers().length / this.pageSize);
-    },
-    visibleTickers(): ITickers {
-      const startIndex = (this.currentPage - 1) * this.pageSize;
-      const endIndex = startIndex + this.pageSize;
+    filteredTickers() {
+      if (this.searchQuery === "") {
+        return this.tickers;
+      }
 
-      return this.filteredTickers().slice(startIndex, endIndex);
+      return this.tickers.filter((ticker) =>
+        ticker.name.includes(this.searchQuery.toLowerCase().trim())
+      );
+    },
+    totalPages(): number {
+      return Math.ceil(this.filteredTickers.length / this.pageSize);
+    },
+    startIndex(): number {
+      return (this.currentPage - 1) * this.pageSize;
+    },
+    endIndex(): number {
+      return this.startIndex + this.pageSize;
+    },
+    paginatedTickers(): ITickers {
+      return this.filteredTickers.slice(this.startIndex, this.endIndex);
+    },
+    maxGraphValue(): number {
+      return Math.max(...this.selectedTickerGraph);
+    },
+    minGraphValue(): number {
+      return Math.min(...this.selectedTickerGraph);
+    },
+    normalizedGraph(): number[] {
+      if (this.maxGraphValue === this.minGraphValue) {
+        return this.selectedTickerGraph.map(() => 50);
+      }
+
+      return this.selectedTickerGraph.map(
+        (price) =>
+          5 +
+          ((price - this.minGraphValue) * 95) /
+            (this.maxGraphValue - this.minGraphValue)
+      );
+    },
+    currentPageStateOptions(): { searchQuery: string; currentPage: number } {
+      return {
+        searchQuery: this.searchQuery,
+        currentPage: this.currentPage,
+      };
     },
   },
   watch: {
     searchQuery() {
       this.currentPage = 1;
-
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?search=${this.searchQuery}&page=${this.currentPage}`
-      );
     },
-    currentPage() {
-      window.history.pushState(
-        null,
-        document.title,
-        `${window.location.pathname}?search=${this.searchQuery}&page=${this.currentPage}`
-      );
+    currentPageStateOptions(value: {
+      searchQuery: string;
+      currentPage: number;
+    }) {
+      saveStateToWindowLocation(value);
+    },
+    paginatedTickers() {
+      if (this.paginatedTickers.length === 0 && this.currentPage > 1) {
+        this.currentPage -= 1;
+      }
+    },
+    selectedTicker() {
+      this.selectedTickerGraph = [];
+    },
+    tickers() {
+      setTickersToLocalStorage(this.tickers);
     },
   },
   created() {
@@ -294,14 +277,14 @@ export default defineComponent({
     const tickersFromLocalStorage = getTickersFromLocalStorage();
 
     if (tickersFromLocalStorage) {
-      //       this.tickers = tickersFromLocalStorage;
-      //
-      //       this.tickers.forEach((ticker) => {
-      //         const intervalId = this.handleTrackingTicker(ticker.name);
-      //         if (intervalId) {
-      //           ticker.intervalId = intervalId;
-      //         }
-      //       });
+      this.tickers = tickersFromLocalStorage;
+
+      // this.tickers.forEach((ticker) => {
+      //   const intervalId = this.handleTrackingTicker(ticker.name);
+      //   if (intervalId) {
+      //     ticker.intervalId = intervalId;
+      //   }
+      // });
     }
   },
 });
@@ -313,7 +296,7 @@ export default defineComponent({
     <section>
       <VContainer>
         <div>
-          <form @submit.prevent="handleAddTicker">
+          <form @submit.prevent="() => handleAddTicker()">
             <fieldset class="w-full max-w-none sm:w-auto sm:max-w-xs">
               <legend class="block text-sm text-gray-700">
                 <label for="wallet">Тикер</label>
@@ -338,7 +321,7 @@ export default defineComponent({
                     class="flex"
                   >
                     <button
-                      @click="handleAddTickerUseCoinHint(coin)"
+                      @click="handleAddTicker(coin)"
                       type="button"
                       class="inline-block min-h-[18px] cursor-pointer rounded-md bg-gray-300 px-2 text-xs font-bold uppercase text-gray-800 transition-colors duration-150 ease-in-out active:bg-gray-400 md:hover:bg-gray-400"
                     >
@@ -366,7 +349,7 @@ export default defineComponent({
         </div>
       </VContainer>
     </section>
-    <section class="mt-[20px]">
+    <section v-if="tickers.length !== 0" class="mt-[20px]">
       <VContainer>
         <div>
           <div class="max-w-xs">
@@ -407,11 +390,14 @@ export default defineComponent({
       <VContainer>
         <div>
           <VDivider />
+          <div v-if="filteredTickers.length === 0" class="text-center">
+            <p>Извините на данный момент элементов нет {{ `:(` }}</p>
+          </div>
           <div
             class="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3"
           >
             <article
-              v-for="tickerItem in visibleTickers"
+              v-for="tickerItem in paginatedTickers"
               :key="tickerItem.name"
               :aria-label="`Открыть ${tickerItem.name} график`"
               :class="{
@@ -455,7 +441,7 @@ export default defineComponent({
           </h3>
           <div class="flex h-64 items-end border-b border-l border-gray-600">
             <div
-              v-for="(bar, idx) in normalizeGraph()"
+              v-for="(bar, idx) in normalizedGraph"
               :key="idx"
               :style="{ height: `${bar}%` }"
               class="w-10 border bg-purple-800"
