@@ -1,11 +1,6 @@
 <script lang="ts">
 import { defineComponent } from "vue";
-import type {
-  ISeletedTicker,
-  ITicker,
-  ITickers,
-  TIntervalID,
-} from "./interfaces";
+import type { ISeletedTicker, ITicker, ITickers } from "./interfaces";
 
 import AddIcon from "./assets/imgs/icons/AddIcon.vue";
 import CloseIcon from "./assets/imgs/icons/CloseIcon.vue";
@@ -14,9 +9,10 @@ import VContainer from "./components/ui/VContainer.vue";
 import VDivider from "./components/ui/VDivider.vue";
 import VPagePreloader from "./components/ui/VPagePreloader.vue";
 
-import { getCoinList, getTickerPrice } from "./api";
+import { getCoinList, loadTickers } from "./api";
 import {
   deleteTickerFromLocalStorage,
+  getStateFromWindowLocation,
   getTickersFromLocalStorage,
   lockPageScroll,
   saveStateToWindowLocation,
@@ -50,7 +46,7 @@ export default defineComponent({
         lockPageScroll(false);
       }
     } catch (error) {
-      console.log(error);
+      console.log("GET_COINLIST", error);
     }
   },
   components: {
@@ -94,12 +90,6 @@ export default defineComponent({
         price: 0,
       };
 
-      const intervalId = this.handleTrackingTicker(newTickerName);
-
-      if (intervalId) {
-        newTicker.intervalId = intervalId;
-      }
-
       this.tickers = [...this.tickers, newTicker];
 
       this.formAddTickerInputTickerName = "";
@@ -109,13 +99,16 @@ export default defineComponent({
         this.formAddTickerIsError = false;
       }
     },
+    formatPrice(price: number): number {
+      const formattedPrice =
+        price > 1 ? price.toFixed(2) : price.toPrecision(2);
+
+      return Number(formattedPrice);
+    },
     handleDeleteTicker(tickerToRemove: ITicker) {
       this.tickers = this.tickers.filter((ticker) => {
         if (ticker.name === tickerToRemove.name) {
           deleteTickerFromLocalStorage(ticker);
-          if (tickerToRemove.intervalId) {
-            clearInterval(tickerToRemove.intervalId);
-          }
           if (this.selectedTicker) {
             if (this.selectedTicker === tickerToRemove.name) {
               this.selectedTicker = null;
@@ -134,38 +127,32 @@ export default defineComponent({
       this.selectedTickerGraph = [];
       this.selectedTicker = null;
     },
-    handleTrackingTicker(tickerName: string): TIntervalID {
-      const intervalId = setInterval(async () => {
-        try {
-          const price = await getTickerPrice(tickerName);
-
-          if (price) {
-            const formatPrice =
-              price > 1 ? price.toFixed(2) : price.toPrecision(2);
-
-            this.tickers = this.tickers.map((ticker) => {
-              if (ticker.name === tickerName.toLowerCase()) {
-                if (this.selectedTicker) {
-                  if (this.selectedTicker === ticker.name) {
-                    this.selectedTickerGraph.push(Number(price));
-                  }
-                }
-
-                return {
-                  ...ticker,
-                  price: Number(formatPrice),
-                };
-              } else {
-                return ticker;
-              }
-            });
-          }
-        } catch (error) {
-          console.log(error);
+    async handleUpdateTickers() {
+      try {
+        if (!this.tickers.length) {
+          return;
         }
-      }, 10000);
 
-      return intervalId;
+        const tickerNames = this.tickers.map((ticker) =>
+          ticker.name.toUpperCase()
+        );
+
+        const tickerPrices = await loadTickers(tickerNames);
+
+        this.tickers.forEach((ticker) => {
+          const upCaseName = ticker.name.toUpperCase();
+
+          const price = tickerPrices[upCaseName];
+
+          if (!price) {
+            return;
+          }
+
+          ticker.price = price;
+        });
+      } catch (error) {
+        console.log("UPDATE_TICKER_METHOD", error);
+      }
     },
     prevPage() {
       if (this.currentPage > 1) {
@@ -262,9 +249,7 @@ export default defineComponent({
     },
   },
   created() {
-    const windowData = Object.fromEntries(
-      new URL(window.location.href).searchParams.entries()
-    );
+    const windowData = getStateFromWindowLocation();
 
     if (windowData.search) {
       this.searchQuery = windowData.search;
@@ -278,14 +263,9 @@ export default defineComponent({
 
     if (tickersFromLocalStorage) {
       this.tickers = tickersFromLocalStorage;
-
-      this.tickers.forEach((ticker) => {
-        const intervalId = this.handleTrackingTicker(ticker.name);
-        if (intervalId) {
-          ticker.intervalId = intervalId;
-        }
-      });
     }
+
+    setInterval(() => this.handleUpdateTickers(), 5000);
   },
 });
 </script>
@@ -417,7 +397,7 @@ export default defineComponent({
                   {{ tickerItem.name }} - USD
                 </span>
                 <span class="mt-1 text-3xl font-bold text-gray-900">{{
-                  tickerItem.price === 0 ? "-" : tickerItem.price
+                  tickerItem.price === 0 ? "-" : formatPrice(tickerItem.price)
                 }}</span>
               </div>
               <button

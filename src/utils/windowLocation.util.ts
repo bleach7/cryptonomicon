@@ -13,3 +13,9 @@ export const saveStateToWindowLocation = ({
     );
   }
 };
+
+export const getStateFromWindowLocation = () => {
+  return Object.fromEntries(
+    new URL(window.location.href).searchParams.entries()
+  );
+};
