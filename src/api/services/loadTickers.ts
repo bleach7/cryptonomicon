@@ -11,16 +11,20 @@ export const loadTickers = async (
     }`
   );
 
-  const data = await response.json();
+  const data: ILoadTickerData = await response.json();
 
   const formatData: ILoadTickerResponse = Object.fromEntries(
-    Object.entries(data).map(([key, value]: [string, any]) => [key, value.USD])
+    Object.entries(data).map(([key, value]) => [key, value.USD])
   );
 
   return formatData;
 };
 
 interface ILoadTickerResponse {
+  [cryptoName: string]: number;
+}
+
+interface ILoadTickerData {
   [cryptoName: string]: IPrice;
 }
 
